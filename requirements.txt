@@ -40,8 +40,10 @@ grpcio==1.57.0
     # via
     #   tensorboard
     #   tensorflow
-gym==0.26.2
-    # via nes-py
+gym==0.25.2
+    # via
+    #   -r requirements.in
+    #   nes-py
 gym-notices==0.0.8
     # via gym
 gym-super-mario-bros==7.4.0
