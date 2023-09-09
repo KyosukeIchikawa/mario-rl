@@ -36,7 +36,7 @@ google-auth-oauthlib==1.0.0
     # via tensorboard
 google-pasta==0.2.0
     # via tensorflow
-grpcio==1.57.0
+grpcio==1.58.0
     # via
     #   tensorboard
     #   tensorflow
@@ -96,7 +96,7 @@ packaging==23.1
     #   tensorflow
 pillow==10.0.0
     # via matplotlib
-protobuf==4.24.2
+protobuf==4.24.3
     # via
     #   tensorboard
     #   tensorflow
@@ -135,7 +135,7 @@ tensorflow==2.13.0
     # via -r requirements.in
 tensorflow-estimator==2.13.0
     # via tensorflow
-tensorflow-io-gcs-filesystem==0.33.0
+tensorflow-io-gcs-filesystem==0.34.0
     # via tensorflow
 termcolor==2.3.0
     # via tensorflow

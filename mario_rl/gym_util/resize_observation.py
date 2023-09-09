@@ -3,7 +3,7 @@ import gym
 import numpy as np
 
 
-class ResizeObservation(gym.Wrapper):
+class ResizeObservation(gym.ObservationWrapper):
     """Resize observation images.
 
     This class is based on the following code.
@@ -21,6 +21,6 @@ class ResizeObservation(gym.Wrapper):
         )
 
     def observation(self, observation):
-        height, width, _ = self.observation_space.shape
-        frame = cv2.resize(observation, (width, height), interpolation=cv2.INTER_AREA)
+        frame = cv2.resize(observation, self.observation_space.shape[:2])
+        frame = frame.astype(np.float32) / 255.0
         return frame
