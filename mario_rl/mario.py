@@ -10,7 +10,7 @@ from rl_util import Experience, ReplayBuffer
 class Mario:
     _GAMMA = 0.9  # discount factor for future rewards
     _LEARNING_RATE = 0.00025  # learning rate for q-network
-    _BATCH_SIZE = 32  # no. of experiences to sample in each training update
+    _BATCH_SIZE = 16  # no. of experiences to sample in each training update
     _SYNC_EVERY = 1000  # no. of experiences between each sync of online and target network
     _FREQ_LEARN = 4  # no. of experiences between each training update
     _EXPLORATION_RATE_MAX = 1.0  # initial exploration rate
@@ -42,23 +42,31 @@ class Mario:
 
         self.memory = ReplayBuffer(size=1000000)
 
-    def act(self, state: np.ndarray, train=False) -> int:
-        """Acting Policy of the Mario Agent given an observation."""
+    def act(self, state: np.ndarray, train=False) -> (int, Optional[np.ndarray]):
+        """Acting Policy of the Mario Agent given an observation.
+        Decreases the exploration_rate linearly over time.
+        """
+        action_values = None
         # epsilon-greedy exploration strategy
         if train and np.random.rand() < self.exploration_rate:
             # explore - do random action
             action_idx = np.random.randint(self._action_dim)
         else:
             # exploit
-            action_values = self._q_online(state[np.newaxis])
-            action_idx = np.argmax(action_values, axis=1)
+            action_idx, action_values = self.greedy_act(state)
 
-        if train:
-            # decrease exploration_rate
-            self.exploration_rate *= self._EXPLORATION_RATE_DECAY
-            self.exploration_rate = max(self._EXPLORATION_RATE_MIN, self.exploration_rate)
+        # decrease exploration_rate
+        self.exploration_rate *= self._EXPLORATION_RATE_DECAY
+        self.exploration_rate = max(self._EXPLORATION_RATE_MIN, self.exploration_rate)
 
-        return int(action_idx)
+        return int(action_idx), action_values
+
+    def greedy_act(self, state: np.ndarray) -> (int, np.ndarray):
+        """Acting Policy of the Mario Agent given an observation."""
+        # epsilon-greedy exploration strategy
+        action_values = self._q_online(state[np.newaxis])
+        action_idx = np.argmax(action_values, axis=1)
+        return int(action_idx), action_values[0]
 
     def cache(self, exp: Experience):
         """Cache the experience into memory buffer"""
