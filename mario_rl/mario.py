@@ -10,27 +10,36 @@ from rl_util import Experience, ReplayBuffer
 class Mario:
     _GAMMA = 0.9  # discount factor for future rewards
     _LEARNING_RATE = 0.00025  # learning rate for q-network
-    _BATCH_SIZE = 16  # no. of experiences to sample in each training update
-    _SYNC_EVERY = 1000  # no. of experiences between each sync of online and target network
-    _FREQ_LEARN = 4  # no. of experiences between each training update
+    _BATCH_SIZE = 64  # no. of experiences to sample in each training update
+    _SYNC_EVERY = 10000  # no. of experiences between each sync of online and target network
+    _FREQ_LEARN = 1  # no. of experiences between each training update
     _EXPLORATION_RATE_MAX = 1.0  # initial exploration rate
     _EXPLORATION_RATE_MIN = 0.1  # final exploration rate
-    _EXPLORATION_RATE_DECAY = 0.99999975  # rate of exponential decay of exploration rate per action in training
+    _EXPLORATION_RATE_DECAY = 0.99999  # rate of exponential decay of exploration rate per action in training
 
-    def __init__(self, state_shape: tuple, action_dim: int, save_dir: str):
-        self._state_shape = state_shape
+    def __init__(self, state_shape: tuple, action_dim: int):
         self._action_dim = action_dim
-        self._save_dir = save_dir
 
-        self._q_online = keras.Sequential([
-            keras.layers.Permute((2, 3, 1), input_shape=self._state_shape),
-            keras.layers.Conv2D(filters=32, kernel_size=8, strides=4, activation='relu'),
-            keras.layers.Conv2D(filters=64, kernel_size=4, strides=2, activation='relu'),
-            keras.layers.Conv2D(filters=64, kernel_size=3, strides=1, activation='relu'),
-            keras.layers.Flatten(),
-            keras.layers.Dense(units=512, activation='relu'),
-            keras.layers.Dense(units=action_dim, activation=None),
-        ])
+        # online network
+        # input image and last action
+        input_img = keras.layers.Input(shape=state_shape[0], dtype='float32')
+        input_last_action = keras.layers.Input(shape=state_shape[1], dtype='float32')
+        # network for image
+        output_img = keras.layers.Permute((2, 3, 1))(input_img)
+        output_img = keras.layers.Conv2D(filters=32, kernel_size=8, strides=4, activation='relu')(output_img)
+        output_img = keras.layers.Conv2D(filters=64, kernel_size=4, strides=2, activation='relu')(output_img)
+        output_img = keras.layers.Conv2D(filters=64, kernel_size=3, strides=1, activation='relu')(output_img)
+        output_img = keras.layers.Flatten()(output_img)
+        # network for last action
+        output_last_action = keras.layers.Flatten()(input_last_action)
+        output_last_action = keras.layers.Dense(units=32, activation='relu')(output_last_action)
+        # concatenate networks
+        outputs = keras.layers.Concatenate()([output_img, output_last_action])
+        outputs = keras.layers.Dense(units=512, activation='relu')(outputs)
+        q_values = keras.layers.Dense(units=self._action_dim, activation='linear')(outputs)
+        self._q_online = keras.Model(inputs=[input_img, input_last_action], outputs=q_values)
+
+        # target network
         self._q_target = copy.deepcopy(self._q_online)
         self._q_target.trainable = False
 
@@ -39,10 +48,9 @@ class Mario:
 
         self.n_learn = 0
         self.exploration_rate = self._EXPLORATION_RATE_MAX
+        self.memory = ReplayBuffer(size=100000)
 
-        self.memory = ReplayBuffer(size=1000000)
-
-    def act(self, state: np.ndarray, train=False) -> (int, Optional[np.ndarray]):
+    def act(self, state, train=False) -> (int, Optional[np.ndarray]):
         """Acting Policy of the Mario Agent given an observation.
         Decreases the exploration_rate linearly over time.
         """
@@ -55,16 +63,16 @@ class Mario:
             # exploit
             action_idx, action_values = self.greedy_act(state)
 
-        # decrease exploration_rate
-        self.exploration_rate *= self._EXPLORATION_RATE_DECAY
-        self.exploration_rate = max(self._EXPLORATION_RATE_MIN, self.exploration_rate)
+        if train:
+            # decrease exploration_rate
+            self.exploration_rate *= self._EXPLORATION_RATE_DECAY
+            self.exploration_rate = max(self._EXPLORATION_RATE_MIN, self.exploration_rate)
 
         return int(action_idx), action_values
 
-    def greedy_act(self, state: np.ndarray) -> (int, np.ndarray):
+    def greedy_act(self, state) -> (int, np.ndarray):
         """Acting Policy of the Mario Agent given an observation."""
-        # epsilon-greedy exploration strategy
-        action_values = self._q_online(state[np.newaxis])
+        action_values = self._q_online((np.array([state[0]]), np.array([state[1]])))
         action_idx = np.argmax(action_values, axis=1)
         return int(action_idx), action_values[0]
 
@@ -87,13 +95,17 @@ class Mario:
             return None
 
         experiences = self.memory.sample(self._BATCH_SIZE)
-        states = np.array([exp.state for exp in experiences])  # [batch_size, width, height, channels]
-        next_states = np.array([exp.next_state for exp in experiences])  # [batch_size, width, height, channels]
-        actions = np.array([exp.action for exp in experiences])  # [batch_size]
+        states_img = np.array([exp.state[0] for exp in experiences])  # [batch_size, steps, width, height]
+        states_last_action = np.array([exp.state[1] for exp in experiences])  # [batch_size, steps, action_dim]
+        states = [states_img, states_last_action]
+        next_states_img = np.array([exp.next_state[0] for exp in experiences])  # [batch_size, width, height, steps]
+        next_states_last_action = np.array([exp.next_state[1] for exp in experiences])  # [batch_size, steps, action_dim]
+        next_states = [next_states_img, next_states_last_action]
+        actions = np.array([exp.action for exp in experiences])  # [batch_size,]
         q_values = self._q_online(states)  # [batch_size, action_dim]
         next_q_values = self._q_target(next_states)  # [batch_size, action_dim]
         td_targets = np.array([exp.reward + (1 - exp.done) * self._GAMMA * np.max(next_q)
-                               for next_q, exp in zip(next_q_values, experiences)])  # [batch_size]
+                               for next_q, exp in zip(next_q_values, experiences)])  # [batch_size,]
         # Update online network
         q_target = q_values.numpy()
         q_target[np.arange(self._BATCH_SIZE), actions] = td_targets

@@ -1,11 +1,9 @@
-from typing import NamedTuple
-
-import numpy as np
+from typing import Any, NamedTuple
 
 
 class Experience(NamedTuple):
-    state: np.ndarray
-    next_state: np.ndarray
+    state: Any
+    next_state: Any
     action: int
     reward: float
     done: bool
