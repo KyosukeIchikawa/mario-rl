@@ -1,5 +1,7 @@
 import copy
+import os
 from collections import deque
+from datetime import datetime
 
 import gym_super_mario_bros
 import numpy as np
@@ -12,6 +14,9 @@ from gym_util import GrayScaleObservation, ResizeObservation, SkipFrame
 from math_util import OnlineStats
 from rl_util import Experience
 from visual import draw_horizontal_bar_graph, make_video
+
+_SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
+_DAT_DIR = f"./dat_{_SCRIPT_NAME}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 _ACTION_LABELS = tuple("+".join(x) for x in SIMPLE_MOVEMENT)
 _ACTION_COLORS = ((222, 222, 222), (0, 0, 255), (255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 255, 255), (255, 0, 255))
@@ -80,7 +85,7 @@ def run_episode(episode, env, mario, train: bool, need_video: bool):
         state = next_state
 
     if need_video:
-        make_video(frames, f'./dat/ep_{episode: 05d}_reward_{total_reward: 05.0f}.mp4')
+        make_video(frames, f'{_DAT_DIR}/ep_{episode: 05d}_reward_{total_reward: 05.0f}.mp4')
 
     prefix = "[TRAIN]" if train else "[TEST]"
     print(f"{prefix} Episode: {episode: 5.0f}/{_EPISODES}, "
@@ -91,6 +96,8 @@ def run_episode(episode, env, mario, train: bool, need_video: bool):
 
 
 def main():
+    os.makedirs(_DAT_DIR, exist_ok=True)
+
     env = gym_super_mario_bros.make("SuperMarioBros-1-1-v0")
     env = JoypadSpace(env, SIMPLE_MOVEMENT)  # Limit action space
     env = SkipFrame(env, skip=4)
