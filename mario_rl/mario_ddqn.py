@@ -20,6 +20,10 @@ class Mario:
     _REPLAY_BUFFER_SIZE = 100000  # no. of experiences to store in replay buffer
 
     def __init__(self, state_shape: tuple, action_dim: int):
+        """
+        :param state_shape: Shape of the state space (image and last action).
+        :param action_dim: Shape of the action space.
+        """
         self._action_dim = action_dim
 
         # online network
