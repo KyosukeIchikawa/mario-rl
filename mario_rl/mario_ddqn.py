@@ -8,14 +8,16 @@ from rl_util import Experience, ReplayBuffer
 
 
 class Mario:
+    """Agent that learns to play Super Mario Bros using Double Deep Q-Networks (DDQN)."""
     _GAMMA = 0.9  # discount factor for future rewards
     _LEARNING_RATE = 0.00025  # learning rate for q-network
     _BATCH_SIZE = 64  # no. of experiences to sample in each training update
-    _SYNC_EVERY = 10000  # no. of experiences between each sync of online and target network
-    _FREQ_LEARN = 1  # no. of experiences between each training update
-    _EXPLORATION_RATE_MAX = 1.0  # initial exploration rate
+    _SYNC_EVERY = 10000  # no. of calls to learn() before syncing target network with online network
+    _FREQ_LEARN = 1  # no. of calls to learn() before updating online network
+    _EXPLORATION_RATE_INIT = 1.0  # initial exploration rate
     _EXPLORATION_RATE_MIN = 0.1  # final exploration rate
-    _EXPLORATION_RATE_DECAY = 0.99999  # rate of exponential decay of exploration rate per action in training
+    _EXPLORATION_RATE_DECAY = 0.99999  # rate of exponential decay of exploration rate per call to act() with train=True
+    _REPLAY_BUFFER_SIZE = 100000  # no. of experiences to store in replay buffer
 
     def __init__(self, state_shape: tuple, action_dim: int):
         self._action_dim = action_dim
@@ -46,9 +48,9 @@ class Mario:
         optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, clipnorm=1.0)
         self._q_online.compile(optimizer=optimizer, loss='mse')
 
-        self.n_learn = 0
-        self.exploration_rate = self._EXPLORATION_RATE_MAX
-        self.memory = ReplayBuffer(size=100000)
+        self.exploration_rate = self._EXPLORATION_RATE_INIT
+        self.memory = ReplayBuffer(size=self._REPLAY_BUFFER_SIZE)
+        self._cnt_called_learn = 0
 
     def act(self, state, train=False) -> (int, Optional[np.ndarray]):
         """Acting Policy of the Mario Agent given an observation.
@@ -86,12 +88,12 @@ class Mario:
 
         :return: The loss on this gradient step if learning was done, else None.
         """
-        self.n_learn += 1
+        self._cnt_called_learn += 1
 
-        if self.n_learn % self._SYNC_EVERY == 0:
+        if self._cnt_called_learn % self._SYNC_EVERY == 0:
             self._q_target.set_weights(self._q_online.get_weights())
 
-        if self.n_learn % self._FREQ_LEARN != 0 or len(self.memory) < self._BATCH_SIZE:
+        if self._cnt_called_learn % self._FREQ_LEARN != 0 or len(self.memory) < self._BATCH_SIZE:
             return None
 
         experiences = self.memory.sample(self._BATCH_SIZE)
