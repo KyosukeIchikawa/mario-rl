@@ -109,9 +109,12 @@ class Mario:
         next_states = [next_states_img, next_states_last_action]
         actions = np.array([exp.action for exp in experiences])  # [batch_size,]
         q_values = self._q_online(states)  # [batch_size, action_dim]
-        next_q_values = self._q_target(next_states)  # [batch_size, action_dim]
-        td_targets = np.array([exp.reward + (1 - exp.done) * self._GAMMA * np.max(next_q)
-                               for next_q, exp in zip(next_q_values, experiences)])  # [batch_size,]
+        next_q_online_values = self._q_online(next_states)  # [batch_size, action_dim]
+        best_next_actions = np.argmax(next_q_online_values, axis=1)  # [batch_size,]
+        next_q_target_values = self._q_target(next_states)  # [batch_size, action_dim]
+        td_targets = np.array([exp.reward + (1 - exp.done) * self._GAMMA * next_q_target[best_next_action]
+                               for exp, next_q_target, best_next_action
+                               in zip(experiences, next_q_target_values, best_next_actions)])
         # Update online network
         q_target = q_values.numpy()
         q_target[np.arange(self._BATCH_SIZE), actions] = td_targets

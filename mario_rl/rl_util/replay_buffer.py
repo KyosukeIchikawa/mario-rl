@@ -12,8 +12,8 @@ class ReplayBuffer:
     def __len__(self):
         return len(self._buffer)
 
-    def append(self, item: Experience):
-        self._buffer.append(item)
+    def append(self, exp: Experience):
+        self._buffer.append(exp)
 
     def sample(self, batch_size: int) -> Experience:
         return random.sample(self._buffer, batch_size)
