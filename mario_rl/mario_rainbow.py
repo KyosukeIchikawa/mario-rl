@@ -119,6 +119,7 @@ class Mario:
         priority_beta = self._PRIORITY_BETA_INIT + self._cnt_called_learn * self._PRIORITY_BETA_INCREASE_PER_STEP
         priority_beta = min(1.0, priority_beta)
         loss_weights = (len(self.memory) * np.array(probabilities)) ** (-priority_beta)
+        loss_weights /= np.max(loss_weights)
 
         states_img = np.array([exp.state[0] for exp in experiences])  # [batch_size, steps, width, height]
         states_last_action = np.array([exp.state[1] for exp in experiences])  # [batch_size, steps, action_dim]
