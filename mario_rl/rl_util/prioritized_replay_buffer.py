@@ -1,6 +1,8 @@
+import pickle
 import random
+import zlib
 from collections import deque
-from typing import List, Tuple, Sequence
+from typing import List, Tuple, Sequence, Union
 
 from .experience import Experience
 
@@ -74,7 +76,8 @@ class _SumTree:
 
 class PrioritizedReplayBuffer:
     """A prioritized experience replay buffer for agents."""
-    def __init__(self, size: int):
+    def __init__(self, size: int, compress=True):
+        self._compress = compress
         self._buffer_index = 0
         self._buffer = deque(maxlen=size)
         self._priorities = _SumTree(capacity=size)
@@ -88,12 +91,18 @@ class PrioritizedReplayBuffer:
 
         :param exp: an experience to append
         """
+        if self._compress:
+            exp = zlib.compress(pickle.dumps(exp))
         self._buffer.append(exp)
         # set the maximum priority to sample the new experience with the highest priority
         self._priorities[self._buffer_index] = self._max_priority
         self._buffer_index += 1
         if self._buffer_index >= self._buffer.maxlen:
             self._buffer_index = 0
+
+    @staticmethod
+    def _decompress(exp: bytes) -> Experience:
+        return pickle.loads(zlib.decompress(exp))
 
     def sample(self, batch_size: int) -> Tuple[List[int], List[float], List[Experience]]:
         """Sample experiences from the buffer with priority weights.
@@ -105,7 +114,8 @@ class PrioritizedReplayBuffer:
         indices = [self._priorities.weighted_sample_index() for _ in range(batch_size)]
         coe = 1.0 / self._priorities.sum()
         probabilities = [self._priorities[index] * coe for index in indices]
-        experiences = [self._buffer[index] for index in indices]
+        decompress_if_need = self._decompress if self._compress else lambda _: _
+        experiences = [decompress_if_need(self._buffer[index]) for index in indices]
         return indices, probabilities, experiences
 
     def update_priorities(self, indices: Sequence[int], priorities: Sequence[float]):
