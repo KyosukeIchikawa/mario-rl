@@ -9,7 +9,8 @@ sys.path.append(root_directory)
 import numpy as np
 
 from mario_rl.math_util import OnlineStats
-from mario_rl.rl_util.prioritized_replay_buffer import _SumTree
+from mario_rl.rl_util.sum_tree import SumTree
+from mario_rl.rl_util.sum_tree_for_spiky import SumTreeForSpiky
 
 
 _TEST_ITERATIONS = 100
@@ -35,20 +36,19 @@ def validation_sum_tree_sample_indices_speed():
     }
 
     for method, priorities in priorities_by_method.items():
-        sum_tree = _SumTree(capacity=_BUFFER_SIZE)
-        for i in range(_BUFFER_SIZE):
-            sum_tree[i] = priorities[i]
-
         print(f"Validation sampling speed ({method} priorities, iter={_TEST_ITERATIONS}, batch={_BATCH_SIZE}) ...")
-        sampling_methods = [sum_tree.weighted_sample_indices, sum_tree.weighted_sample_indices_for_spiky_values]
-        for sampling_method in sampling_methods:
+        for sum_tree_class in [SumTree, SumTreeForSpiky]:
+            sum_tree = sum_tree_class(capacity=_BUFFER_SIZE)
+            for i in range(_BUFFER_SIZE):
+                sum_tree[i] = priorities[i]
+
             time_stats = OnlineStats()
             for _ in range(_TEST_ITERATIONS):
                 start_time = time.time()
-                sampling_method(_BATCH_SIZE)
+                sum_tree.weighted_sample_indices(_BATCH_SIZE)
                 elapsed_time = time.time() - start_time
                 time_stats.add(elapsed_time)
-            print(f"{sampling_method.__name__:40s} : "
+            print(f"{sum_tree_class.__name__:20s} : "
                   f"sum={time_stats.sum():.4f}s, mean={time_stats.mean():.4f}s, std={time_stats.std():.4f}s")
 
 
