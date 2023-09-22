@@ -22,6 +22,8 @@ contourpy==1.1.0
     # via matplotlib
 cycler==0.11.0
     # via matplotlib
+exceptiongroup==1.1.3
+    # via pytest
 flatbuffers==23.5.26
     # via tensorflow
 fonttools==4.42.1
@@ -58,6 +60,8 @@ importlib-metadata==6.8.0
     #   markdown
 importlib-resources==6.0.1
     # via matplotlib
+iniconfig==2.0.0
+    # via pytest
 keras==2.13.1
     # via tensorflow
 kiwisolver==1.4.5
@@ -93,9 +97,12 @@ opt-einsum==3.3.0
 packaging==23.1
     # via
     #   matplotlib
+    #   pytest
     #   tensorflow
 pillow==10.0.0
     # via matplotlib
+pluggy==1.3.0
+    # via pytest
 protobuf==4.24.3
     # via
     #   tensorboard
@@ -110,6 +117,8 @@ pyglet==1.5.21
     # via nes-py
 pyparsing==3.0.9
     # via matplotlib
+pytest==7.4.2
+    # via -r requirements.in
 python-dateutil==2.8.2
     # via matplotlib
 requests==2.31.0
@@ -139,6 +148,8 @@ tensorflow-io-gcs-filesystem==0.34.0
     # via tensorflow
 termcolor==2.3.0
     # via tensorflow
+tomli==2.0.1
+    # via pytest
 tqdm==4.66.1
     # via nes-py
 typing-extensions==4.5.0

@@ -3,4 +3,5 @@ gym-super-mario-bros
 matplotlib
 numpy
 opencv-python
+pytest
 tensorflow
