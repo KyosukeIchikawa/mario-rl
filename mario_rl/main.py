@@ -23,7 +23,7 @@ _NUM_STACKED_FRAMES = 4
 def _get_args():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument('--rl', type=str, default='ddqn',
-                                 choices=['ddqn', 'ddqn_per'], help='RL algorithm')
+                                 choices=['categorical_dqn', 'ddqn', 'ddqn_per'], help='RL algorithm')
     argument_parser.add_argument('--world_stage', type=str, default='1-1',
                                  help='World and stage number of Super Mario Bros (e.g. 1-1, 4-2)')
     argument_parser.add_argument('--episodes', type=int, default=1000,
@@ -60,7 +60,9 @@ class Main:
         env = FrameStack(env, num_stack=_NUM_STACKED_FRAMES)
         self._env = env
 
-        if args.rl == 'ddqn':
+        if args.rl == 'categorical_dqn':
+            from mario_categorical_dqn import Mario
+        elif args.rl == 'ddqn':
             from mario_ddqn import Mario
         elif args.rl == 'ddqn_per':
             from mario_ddqn_per import Mario
