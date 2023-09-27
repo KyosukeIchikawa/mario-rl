@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 
 import keras
@@ -57,6 +58,10 @@ class Mario:
         outputs = keras.layers.Softmax()(outputs)  # [batch_size, action_dim, num_atoms]
         self._q_online = keras.Model(inputs=[input_img, input_last_action], outputs=outputs)
 
+        # target network
+        self._q_target = copy.deepcopy(self._q_online)
+        self._q_target.trainable = False
+
         self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, clipnorm=1.0)
 
         self.exploration_rate = self._EXPLORATION_RATE_INIT
@@ -90,17 +95,17 @@ class Mario:
         :param state: The state to get the greedy action for.
         :return: The action index and the Q-values for each action.
         """
-        action_indices, q_values, _ = self._greedy_actions((np.array([state[0]]), np.array([state[1]])))
+        action_indices, q_values, _ = self._greedy_actions((np.array([state[0]]), np.array([state[1]])), self._q_online)
         return action_indices.numpy()[0], q_values.numpy()[0]
 
-    def _greedy_actions(self, states) -> (tf.Tensor, tf.Tensor, tf.Tensor):
+    def _greedy_actions(self, states, q_network: keras.Model) -> (tf.Tensor, tf.Tensor, tf.Tensor):
         """Returns the greedy action for a given state.
         Q-values are represented as a value distribution over a discrete range of values.
 
         :param states: Batch of states to get the greedy action for.
         :return: The action indices, Q-values and Q-value distributions for each state.
         """
-        q_probs = self._q_online(states)  # [batch_size, action_dim, num_atoms]
+        q_probs = q_network(states)  # [batch_size, action_dim, num_atoms]
         # Q-values are represented as a value distribution over a discrete range of values
         q_means = tf.reduce_sum(q_probs * self._support_points, axis=-1)  # [batch_size, action_dim]
         action_indices = tf.argmax(q_means, axis=-1)  # [batch_size]
@@ -117,6 +122,9 @@ class Mario:
         :return: The loss on this gradient step if learning was done, else None.
         """
         self._cnt_called_learn += 1
+
+        if self._cnt_called_learn % self._SYNC_EVERY == 0:
+            self._q_target.set_weights(self._q_online.get_weights())
 
         if self._cnt_called_learn % self._FREQ_LEARN != 0 or len(self.memory) < self._BATCH_SIZE:
             return None
@@ -135,7 +143,7 @@ class Mario:
         # best_next_actions: [batch_size,]
         # next_q_online_values: [batch_size, action_dim]
         # next_q_probs: [batch_size, action_dim, num_atoms]
-        best_next_actions, next_q_online_values, next_q_probs = self._greedy_actions(next_states)
+        best_next_actions, next_q_online_values, next_q_probs = self._greedy_actions(next_states, self._q_target)
         target_probs = self._calc_target_probs_for_actions(q_probs=next_q_probs, action_indices=best_next_actions,
                                                            rewards=rewards, dones=dones)  # [batch_size, num_atoms]
         with tf.GradientTape() as tape:
