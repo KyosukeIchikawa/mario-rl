@@ -15,15 +15,16 @@ class Mario:
     """
     _GAMMA = 0.9  # discount factor for future rewards
     _LEARNING_RATE = 0.00025  # learning rate for q-network
-    _BATCH_SIZE = 64  # no. of experiences to sample in each training update
+    _BATCH_SIZE = 32  # no. of experiences to sample in each training update
     _SYNC_EVERY = 10000  # no. of calls to learn() before syncing target network with online network
     _FREQ_LEARN = 1  # no. of calls to learn() before updating online network
+    _LEARN_START = 1000  # no. of experiences in replay buffer before learning starts
     _EXPLORATION_RATE_INIT = 1.0  # initial exploration rate
     _EXPLORATION_RATE_MIN = 0.1  # final exploration rate
     _EXPLORATION_RATE_DECAY = 0.99999  # rate of exponential decay of exploration rate per call to act() with train=True
     _REPLAY_BUFFER_SIZE = 100000  # no. of experiences to store in replay buffer
-    _V_MIN = -10.0  # min value of value distribution
-    _V_MAX = 10.0  # max value of value distribution
+    _V_MIN = -20.0  # min value of value distribution
+    _V_MAX = 20.0  # max value of value distribution
     _NUM_ATOMS = 51  # no. of atoms in value distribution
 
     def __init__(self, state_shape: tuple, action_dim: int):
@@ -43,17 +44,23 @@ class Mario:
         input_last_action = keras.layers.Input(shape=state_shape[1], dtype='float32')
         # network for image
         output_img = keras.layers.Permute((2, 3, 1))(input_img)
-        output_img = keras.layers.Conv2D(filters=32, kernel_size=8, strides=4, activation='relu')(output_img)
-        output_img = keras.layers.Conv2D(filters=64, kernel_size=4, strides=2, activation='relu')(output_img)
-        output_img = keras.layers.Conv2D(filters=64, kernel_size=3, strides=1, activation='relu')(output_img)
+        output_img = keras.layers.Conv2D(filters=32, kernel_size=8, strides=4, activation='relu',
+                                         kernel_initializer="he_normal")(output_img)
+        output_img = keras.layers.Conv2D(filters=64, kernel_size=4, strides=2, activation='relu',
+                                         kernel_initializer="he_normal")(output_img)
+        output_img = keras.layers.Conv2D(filters=64, kernel_size=3, strides=1, activation='relu',
+                                         kernel_initializer="he_normal")(output_img)
         output_img = keras.layers.Flatten()(output_img)
         # network for last action
         output_last_action = keras.layers.Flatten()(input_last_action)
-        output_last_action = keras.layers.Dense(units=32, activation='relu')(output_last_action)
+        output_last_action = keras.layers.Dense(units=32, activation='relu',
+                                                kernel_initializer="he_normal")(output_last_action)
         # concatenate networks
         outputs = keras.layers.Concatenate()([output_img, output_last_action])
-        outputs = keras.layers.Dense(units=512, activation='relu')(outputs)
-        outputs = keras.layers.Dense(units=action_dim * self._NUM_ATOMS, activation='linear')(outputs)  # [batch_size, action_dim * num_atoms]
+        outputs = keras.layers.Dense(units=512, activation='relu',
+                                     kernel_initializer="he_normal")(outputs)
+        outputs = keras.layers.Dense(units=action_dim * self._NUM_ATOMS,
+                                     kernel_initializer="he_normal")(outputs)  # [batch_size, action_dim * num_atoms]
         outputs = keras.layers.Reshape((action_dim, self._NUM_ATOMS))(outputs)  # [batch_size, action_dim, num_atoms]
         outputs = keras.layers.Softmax()(outputs)  # [batch_size, action_dim, num_atoms]
         self._q_online = keras.Model(inputs=[input_img, input_last_action], outputs=outputs)
@@ -62,7 +69,7 @@ class Mario:
         self._q_target = copy.deepcopy(self._q_online)
         self._q_target.trainable = False
 
-        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE)
+        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, epsilon=0.01/self._BATCH_SIZE)
 
         self.exploration_rate = self._EXPLORATION_RATE_INIT
         self.memory = ReplayBuffer(size=self._REPLAY_BUFFER_SIZE)
@@ -126,7 +133,9 @@ class Mario:
         if self._cnt_called_learn % self._SYNC_EVERY == 0:
             self._q_target.set_weights(self._q_online.get_weights())
 
-        if self._cnt_called_learn % self._FREQ_LEARN != 0 or len(self.memory) < self._BATCH_SIZE:
+        if (self._cnt_called_learn % self._FREQ_LEARN != 0 or
+                self._cnt_called_learn < self._LEARN_START or
+                len(self.memory) < self._BATCH_SIZE):
             return None
 
         experiences = self.memory.sample(self._BATCH_SIZE)
@@ -143,14 +152,15 @@ class Mario:
         # best_next_actions: [batch_size,]
         # next_q_online_values: [batch_size, action_dim]
         # next_q_probs: [batch_size, action_dim, num_atoms]
-        best_next_actions, next_q_online_values, next_q_probs = self._greedy_actions(next_states, self._q_target)
+        best_next_actions, _, _ = self._greedy_actions(next_states, self._q_online)
+        _, next_q_online_values, next_q_probs = self._greedy_actions(next_states, self._q_target)
         target_probs = self._calc_target_probs_for_actions(q_probs=next_q_probs, action_indices=best_next_actions,
                                                            rewards=rewards, dones=dones)  # [batch_size, num_atoms]
         with tf.GradientTape() as tape:
             q_probs = self._q_online(states)  # [batch_size, action_dim, num_atoms]
             masks = self._make_masks(action_indices=actions)  # [batch_size, action_dim, num_atoms]
             q_probs = tf.reduce_sum(q_probs * masks, axis=1)  # [batch_size, num_atoms]
-            q_probs = tf.clip_by_value(q_probs, 1e-6, 1.0)  # clip to avoid log(0)
+            q_probs = tf.clip_by_value(q_probs, 1e-8, 1.0)  # clip to avoid log(0)
             # cross entropy loss
             loss = - tf.reduce_mean(tf.reduce_sum(target_probs * tf.math.log(q_probs), axis=-1))
         grads = tape.gradient(loss, self._q_online.trainable_variables)
@@ -184,7 +194,7 @@ class Mario:
         q_probs = q_probs * masks  # [batch_size, action_dim, num_atoms]
         return tf.reduce_sum(q_probs, axis=1)  # [batch_size, num_atoms]
 
-    def _calc_target_probs(self, rewards: np.ndarray, dones: np.ndarray, next_q_probs: tf.Tensor) -> np.ndarray:
+    def _calc_target_probs(self, rewards: np.ndarray, dones: np.ndarray, next_q_probs: np.ndarray) -> np.ndarray:
         """Calculate the target probabilities.
 
         :param rewards: The rewards of the experiences. Shape is [batch_size,]
@@ -227,5 +237,5 @@ class Mario:
         """
         next_q_probs = self._extract_q_probs(q_probs=q_probs,
                                              action_indices=action_indices)  # [batch_size, action_dim, num_atoms]
-        target_probs = self._calc_target_probs(rewards=rewards, dones=dones, next_q_probs=next_q_probs)
+        target_probs = self._calc_target_probs(rewards=rewards, dones=dones, next_q_probs=next_q_probs.numpy())
         return target_probs

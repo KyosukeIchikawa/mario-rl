@@ -12,9 +12,10 @@ class Mario:
     """Agent that learns to play Super Mario Bros using DDQN with Prioritized Experience Replay."""
     _GAMMA = 0.9  # discount factor for future rewards
     _LEARNING_RATE = 0.00025  # learning rate for q-network
-    _BATCH_SIZE = 64  # no. of experiences to sample in each training update
+    _BATCH_SIZE = 32  # no. of experiences to sample in each training update
     _SYNC_EVERY = 10000  # no. of calls to learn() before syncing target network with online network
     _FREQ_LEARN = 1  # no. of calls to learn() before updating online network
+    _LEARN_START = 1000  # no. of experiences in replay buffer before learning starts
     _EXPLORATION_RATE_INIT = 1.0  # initial exploration rate
     _EXPLORATION_RATE_MIN = 0.1  # final exploration rate
     _EXPLORATION_RATE_DECAY = 0.99999  # rate of exponential decay of exploration rate per call to act() with train=True
@@ -57,7 +58,7 @@ class Mario:
         self._q_target = copy.deepcopy(self._q_online)
         self._q_target.trainable = False
 
-        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE)
+        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, epsilon=0.01/self._BATCH_SIZE)
 
         self.exploration_rate = self._EXPLORATION_RATE_INIT
         self.memory = PrioritizedReplayBuffer(size=self._REPLAY_BUFFER_SIZE)
@@ -104,7 +105,9 @@ class Mario:
         if self._cnt_called_learn % self._SYNC_EVERY == 0:
             self._q_target.set_weights(self._q_online.get_weights())
 
-        if self._cnt_called_learn % self._FREQ_LEARN != 0 or len(self.memory) < self._BATCH_SIZE:
+        if (self._cnt_called_learn % self._FREQ_LEARN != 0 or
+                self._cnt_called_learn < self._LEARN_START or
+                len(self.memory) < self._BATCH_SIZE):
             return None
 
         indices, probabilities, experiences = self.memory.sample(self._BATCH_SIZE)

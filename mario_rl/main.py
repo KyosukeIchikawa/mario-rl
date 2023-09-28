@@ -105,9 +105,11 @@ class Main:
         env = ResizeObservation(env, size=(84, 84))
         env = FrameStack(env, num_stack=_NUM_STACKED_FRAMES)
         self._env = env
+        self._video_max_value = 100
 
         if args.rl == "categorical_dqn":
             from mario_categorical_dqn import Mario
+            self._video_max_value = Mario._V_MAX
         elif args.rl == "ddqn":
             from mario_ddqn import Mario
         elif args.rl == "ddqn_per":
@@ -157,7 +159,7 @@ class Main:
                     frame = draw_horizontal_bar_graph(
                         img=frame,
                         values=action_values,
-                        max_value=100,
+                        max_value=self._video_max_value,
                         labels=_ACTION_LABELS,
                         colors=_ACTION_COLORS,
                         x=5, y=5, width=len(frame[0]) - 10, label_width=100,
