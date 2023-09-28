@@ -62,7 +62,7 @@ class Mario:
         self._q_target = copy.deepcopy(self._q_online)
         self._q_target.trainable = False
 
-        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, clipnorm=1.0)
+        self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE)
 
         self.exploration_rate = self._EXPLORATION_RATE_INIT
         self.memory = ReplayBuffer(size=self._REPLAY_BUFFER_SIZE)
