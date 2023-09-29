@@ -57,6 +57,11 @@ class Mario:
         self.memory = ReplayBuffer(size=self._REPLAY_BUFFER_SIZE)
         self._cnt_called_learn = 0
 
+    @property
+    def cnt_called_learn(self):
+        """Returns the number of times the learn() method was called."""
+        return self._cnt_called_learn
+
     def act(self, state, train=False) -> (int, Optional[np.ndarray]):
         """Acting Policy of the Mario Agent given an observation.
         Decreases the exploration_rate linearly over time.

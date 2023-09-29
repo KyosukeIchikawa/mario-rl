@@ -177,33 +177,27 @@ class Main:
         return episode_logger
 
     def run(self):
-        loss_history = []
-        total_reward_history_train = []
-        total_reward_history_test = []
         try:
-            for episode in range(1, self._episodes + 1):
-                episode_logger = self._run_episode(episode=episode, train=True)
-                episode_logger.print()
-                loss_history.append(episode_logger.loss_stats.mean())
-                total_reward_history_train.append(episode_logger.total_reward)
+            with open(f"{self._save_dir}/train.log", "w") as train_log, \
+                    open(f"{self._save_dir}/test.log", "w") as test_log:
+                train_log.write("episode,train_step,loss,total_reward\n")
+                test_log.write("episode,total_reward\n")
 
-                if episode % self._test_frequency == 0:
-                    episode_logger = self._run_episode(episode=episode, train=False)
+                for episode in range(1, self._episodes + 1):
+                    episode_logger = self._run_episode(episode=episode, train=True)
                     episode_logger.print()
-                    episode_logger.save_experiences()
-                    total_reward_history_test.append(episode_logger.total_reward)
+                    train_step = self._mario.cnt_called_learn
+                    loss = episode_logger.loss_stats.mean()
+                    total_reward = episode_logger.total_reward
+                    train_log.write(f"{episode},{train_step},{loss:.5f},{total_reward:.0f}\n")
+
+                    if episode % self._test_frequency == 0:
+                        episode_logger = self._run_episode(episode=episode, train=False)
+                        episode_logger.print()
+                        episode_logger.save_experiences()
+                        test_log.write(f"{episode},{total_reward:.0f}\n")
         finally:
             self._env.close()
-
-            with open(f"{self._save_dir}/train.log", "w") as f:
-                f.write("episode,loss,total_reward\n")
-                for episode, (loss, total_reward) in enumerate(zip(loss_history, total_reward_history_train)):
-                    f.write(f"{episode+1},{loss:.5f},{total_reward:.0f}\n")
-
-            with open(f"{self._save_dir}/test.log", "w") as f:
-                f.write("episode,total_reward\n")
-                for episode, total_reward in enumerate(total_reward_history_test):
-                    f.write(f"{episode+1},{total_reward:.0f}\n")
 
 
 if __name__ == "__main__":
