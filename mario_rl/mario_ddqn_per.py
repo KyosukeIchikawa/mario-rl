@@ -11,7 +11,7 @@ from rl_util import Experience, PrioritizedReplayBuffer
 class Mario:
     """Agent that learns to play Super Mario Bros using DDQN with Prioritized Experience Replay."""
     _GAMMA = 0.9  # discount factor for future rewards
-    _LEARNING_RATE = 0.00025  # learning rate for q-network
+    _LEARNING_RATE = 0.001  # learning rate for q-network
     _BATCH_SIZE = 32  # no. of experiences to sample in each training update
     _SYNC_EVERY = 10000  # no. of calls to learn() before syncing target network with online network
     _FREQ_LEARN = 1  # no. of calls to learn() before updating online network

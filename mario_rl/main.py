@@ -72,7 +72,7 @@ def _get_args():
                                  choices=["categorical_dqn", "ddqn", "ddqn_per"], help="RL algorithm")
     argument_parser.add_argument("--world_stage", type=str, default="1-1",
                                  help="World and stage number of Super Mario Bros (e.g. 1-1, 4-2)")
-    argument_parser.add_argument("--episodes", type=int, default=1000,
+    argument_parser.add_argument("--episodes", type=int, default=5000,
                                  help="Number of episodes to run")
     argument_parser.add_argument("--test_frequency", type=int, default=10,
                                  help="Frequency of running test episodes")
@@ -181,7 +181,7 @@ class Main:
             with open(f"{self._save_dir}/train.log", "w") as train_log, \
                     open(f"{self._save_dir}/test.log", "w") as test_log:
                 train_log.write("episode,train_step,loss,total_reward\n")
-                test_log.write("episode,total_reward\n")
+                test_log.write("episode,train_step,total_reward\n")
 
                 for episode in range(1, self._episodes + 1):
                     episode_logger = self._run_episode(episode=episode, train=True)
@@ -195,7 +195,7 @@ class Main:
                         episode_logger = self._run_episode(episode=episode, train=False)
                         episode_logger.print()
                         episode_logger.save_experiences()
-                        test_log.write(f"{episode},{total_reward:.0f}\n")
+                        test_log.write(f"{episode},{train_step},{total_reward:.0f}\n")
         finally:
             self._env.close()
 
