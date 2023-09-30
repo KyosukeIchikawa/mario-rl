@@ -114,6 +114,8 @@ class Main:
             from mario_ddqn import Mario
         elif args.rl == "ddqn_per":
             from mario_ddqn_per import Mario
+        elif args.rl == "dueling_ddqn":
+            from mario_dueling_ddqn import Mario
         else:
             raise ValueError(f"Unknown RL algorithm: {args.rl}")
         state_img_shape = env.observation_space.shape
