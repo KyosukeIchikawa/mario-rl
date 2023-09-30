@@ -110,10 +110,12 @@ class Main:
             self._video_max_value = Mario._V_MAX
         elif args.rl == "ddqn":
             from mario_ddqn import Mario
-        elif args.rl == "prioritized_ddqn":
-            from mario_prioritized_ddqn import Mario
         elif args.rl == "dueling_ddqn":
             from mario_dueling_ddqn import Mario
+        elif args.rl == "noisy_dqn":
+            from mario_noisy_dqn import Mario
+        elif args.rl == "prioritized_ddqn":
+            from mario_prioritized_ddqn import Mario
         else:
             raise ValueError(f"Unknown RL algorithm: {args.rl}")
         state_img_shape = env.observation_space.shape
