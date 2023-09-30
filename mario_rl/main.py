@@ -88,7 +88,6 @@ class Main:
         args = _get_args()
         print(f"Start RL algorithm: {args.rl}, World and stage: {args.world_stage}")
 
-        self._args = args
         self._episodes = args.episodes
         self._test_frequency = args.test_frequency
         self._video_frequency = args.video_frequency
@@ -96,7 +95,6 @@ class Main:
         self._save_dir = f"./data/{args.world_stage}_{args.rl}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         os.makedirs(self._save_dir, exist_ok=True)
 
-        args = self._args
         env_name = f"SuperMarioBros-{args.world_stage}-v0"
         env = gym_super_mario_bros.make(env_name)
         env = JoypadSpace(env, _ACTIONS)  # Limit action space
@@ -112,8 +110,8 @@ class Main:
             self._video_max_value = Mario._V_MAX
         elif args.rl == "ddqn":
             from mario_ddqn import Mario
-        elif args.rl == "ddqn_per":
-            from mario_ddqn_per import Mario
+        elif args.rl == "prioritized_ddqn":
+            from mario_prioritized_ddqn import Mario
         elif args.rl == "dueling_ddqn":
             from mario_dueling_ddqn import Mario
         else:
