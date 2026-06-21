@@ -7,4 +7,5 @@ setup(
     url='https://github.com/KyosukeIchikawa/mario-rl',
     packages=find_packages(exclude=['test*']),
     include_package_data=True,
+    python_requires=">=3.9",
 )
