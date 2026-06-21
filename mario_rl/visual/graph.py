@@ -65,7 +65,7 @@ def draw_horizontal_bar_graph(img, *, values, labels, colors, x, y, width, label
                         font_face=font_face, font_scale=font_size, font_color=font_color, font_alpha=alpha, font_thickness=font_thickness)
         # draw a bar
         bar_length = int(bar_width * value / max_value)
-        bar_length = min(bar_length, bar_width)
+        bar_length = max(0, min(bar_length, bar_width))
         img = draw_rectangle(img, x=bar_x, y=bar_y, width=bar_length, height=bar_height, color=color, alpha=alpha)
         # draw a value on the bar
         value_text = value_format.format(value)
