@@ -1,1 +1,1 @@
-from noisy_dence import NoisyDense
+from .noisy_dence import NoisyDense
