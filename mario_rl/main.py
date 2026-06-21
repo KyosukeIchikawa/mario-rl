@@ -66,6 +66,18 @@ class EpisodeLogger:
                             rewards=rewards, dones=dones, action_values=action_values)
 
 
+def _str2bool(value: str) -> bool:
+    """Parse a boolean CLI flag. argparse's `type=bool` treats any non-empty
+    string as True (e.g. bool("False") == True), so parse explicitly."""
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ("true", "t", "yes", "y", "1"):
+        return True
+    if value.lower() in ("false", "f", "no", "n", "0"):
+        return False
+    raise argparse.ArgumentTypeError(f"Expected a boolean value, got: {value!r}")
+
+
 def _get_args():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument("--rl", type=str, default="ddqn",
@@ -79,8 +91,8 @@ def _get_args():
                                  help="Frequency of running test episodes")
     argument_parser.add_argument("--video_frequency", type=int, default=1,
                                  help="Frequency of recording videos")
-    argument_parser.add_argument("--use_test_experience", type=bool, default=True,
-                                 help="Whether to use test experience")
+    argument_parser.add_argument("--use_test_experience", type=_str2bool, default=True,
+                                 help="Whether to use test experience (true/false)")
     return argument_parser.parse_args()
 
 
