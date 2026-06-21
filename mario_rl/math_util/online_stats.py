@@ -17,7 +17,9 @@ class OnlineStats:
         return self._sum / self._count if self._count > 0 else 0
 
     def std(self):
-        return math.sqrt(self._sum_sq / self._count - self.mean() * self.mean())
+        if self._count == 0:
+            return 0.0
+        return math.sqrt(max(0.0, self._sum_sq / self._count - self.mean() * self.mean()))
 
     def sum(self):
         return self._sum
