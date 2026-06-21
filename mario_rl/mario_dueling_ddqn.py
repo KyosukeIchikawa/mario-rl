@@ -122,7 +122,7 @@ class Mario:
         states_img = np.array([exp.state[0] for exp in experiences])  # [batch_size, steps, width, height]
         states_last_action = np.array([exp.state[1] for exp in experiences])  # [batch_size, steps, action_dim]
         states = [states_img, states_last_action]
-        next_states_img = np.array([exp.next_state[0] for exp in experiences])  # [batch_size, width, height, steps]
+        next_states_img = np.array([exp.next_state[0] for exp in experiences])  # [batch_size, steps, width, height]
         next_states_last_action = np.array([exp.next_state[1] for exp in experiences])  # [batch_size, steps, action_dim]
         next_states = [next_states_img, next_states_last_action]
         actions = np.array([exp.action for exp in experiences])  # [batch_size,]
