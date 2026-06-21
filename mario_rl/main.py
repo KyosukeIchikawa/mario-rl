@@ -69,7 +69,8 @@ class EpisodeLogger:
 def _get_args():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument("--rl", type=str, default="ddqn",
-                                 choices=["categorical_dqn", "ddqn", "ddqn_per"], help="RL algorithm")
+                                 choices=["categorical_dqn", "ddqn", "dueling_ddqn", "noisy_dqn", "prioritized_ddqn"],
+                                 help="RL algorithm")
     argument_parser.add_argument("--world_stage", type=str, default="1-1",
                                  help="World and stage number of Super Mario Bros (e.g. 1-1, 4-2)")
     argument_parser.add_argument("--episodes", type=int, default=5000,
