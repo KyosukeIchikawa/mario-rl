@@ -1,4 +1,3 @@
-import copy
 from typing import Optional
 
 import keras
@@ -66,7 +65,8 @@ class Mario:
         self._q_online = keras.Model(inputs=[input_img, input_last_action], outputs=outputs)
 
         # target network
-        self._q_target = copy.deepcopy(self._q_online)
+        self._q_target = keras.models.clone_model(self._q_online)
+        self._q_target.set_weights(self._q_online.get_weights())
         self._q_target.trainable = False
 
         self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, epsilon=0.01/self._BATCH_SIZE)

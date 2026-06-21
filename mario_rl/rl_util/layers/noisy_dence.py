@@ -1,10 +1,11 @@
 from typing import Optional
 
+import keras
 import numpy as np
 import tensorflow as tf
 
 
-class NoisyDense(tf.keras.layers.Layer):
+class NoisyDense(keras.layers.Layer):
     """Noisy dense layer.
     See https://arxiv.org/abs/1706.10295 for details.
     """
@@ -16,7 +17,7 @@ class NoisyDense(tf.keras.layers.Layer):
         """
         super().__init__(**kwargs)
         self.units = units
-        self.activation = tf.keras.activations.get(activation)
+        self.activation = keras.activations.get(activation)
         self._sigma_0 = sigma_0
         self._mu_w = None
         self._sigma_w = None
@@ -30,16 +31,16 @@ class NoisyDense(tf.keras.layers.Layer):
         init_mu_max = 1/np.sqrt(n_input)
         init_sigma = self._sigma_0 / np.sqrt(n_input)
         self._mu_w = self.add_weight(shape=(n_input, self.units),
-                                     initializer=tf.keras.initializers.RandomUniform(init_mu_min, init_mu_max),
+                                     initializer=keras.initializers.RandomUniform(init_mu_min, init_mu_max),
                                      trainable=self.trainable, name='mu_w')
         self._sigma_w = self.add_weight(shape=(n_input, self.units),
-                                        initializer=tf.keras.initializers.Constant(init_sigma),
+                                        initializer=keras.initializers.Constant(init_sigma),
                                         trainable=self.trainable, name='sigma_w')
         self._mu_b = self.add_weight(shape=(self.units,),
-                                     initializer=tf.keras.initializers.RandomUniform(init_mu_min, init_mu_max),
+                                     initializer=keras.initializers.RandomUniform(init_mu_min, init_mu_max),
                                      trainable=True, name='mu_b')
         self._sigma_b = self.add_weight(shape=(self.units,),
-                                        initializer=tf.keras.initializers.Constant(init_sigma),
+                                        initializer=keras.initializers.Constant(init_sigma),
                                         trainable=True, name='sigma_b')
 
         super().build(input_shape)
@@ -79,7 +80,7 @@ class NoisyDense(tf.keras.layers.Layer):
         config = super().get_config()
         config.update({
             'units': self.units,
-            'activation': tf.keras.activations.serialize(self.activation),
+            'activation': keras.activations.serialize(self.activation),
             'sigma_0': self._sigma_0
         })
         return config

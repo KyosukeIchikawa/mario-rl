@@ -1,4 +1,3 @@
-import copy
 from typing import Optional
 
 import keras
@@ -46,7 +45,8 @@ class Mario:
         self._q_online = keras.Model(inputs=[input_img, input_last_action], outputs=q_values)
 
         # target network
-        self._q_target = copy.deepcopy(self._q_online)
+        self._q_target = keras.models.clone_model(self._q_online)
+        self._q_target.set_weights(self._q_online.get_weights())
         self._q_target.trainable = False
 
         self._optimizer = keras.optimizers.Adam(learning_rate=self._LEARNING_RATE, epsilon=0.01/self._BATCH_SIZE)
@@ -68,7 +68,7 @@ class Mario:
         """Acting Policy of the Mario Agent given an observation."""
         action_values = self._q_online((np.array([state[0]]), np.array([state[1]])))
         action_idx = np.argmax(action_values, axis=1)
-        return int(action_idx), action_values[0]
+        return int(action_idx[0]), action_values[0]
 
     def cache(self, exp: Experience):
         """Cache the experience into memory buffer"""
