@@ -14,10 +14,10 @@ class ResizeObservation(gym.ObservationWrapper):
         n_channel = self.observation_space.shape[2:]
         new_shape = size + n_channel
         self.observation_space = gym.spaces.Box(
-            low=0,
-            high=255,
+            low=0.0,
+            high=1.0,
             shape=new_shape,
-            dtype=np.uint8,
+            dtype=np.float32,
         )
 
     def observation(self, observation):
