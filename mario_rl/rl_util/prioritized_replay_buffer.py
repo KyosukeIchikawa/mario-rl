@@ -12,13 +12,18 @@ class PrioritizedReplayBuffer:
     """A prioritized experience replay buffer for agents."""
     def __init__(self, size: int, compress=True):
         self._compress = compress
+        self._size = size
         self._buffer_index = 0
-        self._buffer = deque(maxlen=size)
+        self._len = 0
+        # fixed-length list used as a ring buffer (NOT a deque): a deque shifts
+        # all elements on overflow, which would desync positions from the
+        # SumTree priority indices once the buffer wraps around.
+        self._buffer = [None] * size
         self._priorities = SumTree(capacity=size)
         self._max_priority = 1.0
 
     def __len__(self):
-        return len(self._buffer)
+        return self._len
 
     def append(self, exp: Experience):
         """Append an experience to the buffer with the maximum priority.
@@ -27,12 +32,15 @@ class PrioritizedReplayBuffer:
         """
         if self._compress:
             exp = zlib.compress(pickle.dumps(exp))
-        self._buffer.append(exp)
+        # overwrite at the ring-buffer position so the buffer slot and the
+        # SumTree priority index always refer to the same experience
+        self._buffer[self._buffer_index] = exp
         # set the maximum priority to sample the new experience with the highest priority
         self._priorities[self._buffer_index] = self._max_priority
         self._buffer_index += 1
-        if self._buffer_index >= self._buffer.maxlen:
+        if self._buffer_index >= self._size:
             self._buffer_index = 0
+        self._len = min(self._len + 1, self._size)
 
     @staticmethod
     def _decompress(exp: bytes) -> Experience:
