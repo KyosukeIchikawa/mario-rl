@@ -1,7 +1,9 @@
 gym<0.26
 gym-super-mario-bros
 matplotlib
-numpy
+# nes-py 8.2.1 (the NES emulator behind gym-super-mario-bros) is incompatible
+# with NumPy 2.0's NEP 50 integer-promotion rules, so cap NumPy at <2.
+numpy<2
 opencv-python
 pytest
-tensorflow
+tensorflow>=2.16
