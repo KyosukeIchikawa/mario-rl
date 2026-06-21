@@ -20,10 +20,8 @@ class NoisyDense(tf.keras.layers.Layer):
         self._sigma_0 = sigma_0
         self._mu_w = None
         self._sigma_w = None
-        self._epsilon_w = None
         self._mu_b = None
         self._sigma_b = None
-        self._epsilon_b = None
 
     def build(self, input_shape):
         """Builds the layer."""
@@ -44,12 +42,6 @@ class NoisyDense(tf.keras.layers.Layer):
                                         initializer=tf.keras.initializers.Constant(init_sigma),
                                         trainable=True, name='sigma_b')
 
-        dtype = self._mu_w.dtype
-        epsilon_in = self._f(tf.random.normal(shape=tf.shape(self._mu_w.shape[0], 1), dtype=dtype))
-        epsilon_out = self._f(tf.random.normal(shape=tf.shape(1, self._mu_w.shape[1]), dtype=dtype))
-        self._epsilon_w = tf.matmul(epsilon_in, epsilon_out)
-        self._epsilon_b = epsilon_out
-
         super().build(input_shape)
 
     def call(self, inputs, **kwargs) -> tf.Tensor:
@@ -59,8 +51,15 @@ class NoisyDense(tf.keras.layers.Layer):
         :param kwargs: Additional arguments.
         :return: Output tensor.
         """
-        w = self._mu_w + self._sigma_w * self._epsilon_w
-        b = self._mu_b + self._sigma_b * self._epsilon_b
+        # Resample factorized Gaussian noise on every forward pass (NoisyNet).
+        dtype = self._mu_w.dtype
+        n_input = self._mu_w.shape[0]
+        epsilon_in = self._f(tf.random.normal(shape=(n_input, 1), dtype=dtype))  # [n_input, 1]
+        epsilon_out = self._f(tf.random.normal(shape=(1, self.units), dtype=dtype))  # [1, units]
+        epsilon_w = epsilon_in * epsilon_out  # [n_input, units]
+        epsilon_b = tf.squeeze(epsilon_out, axis=0)  # [units]
+        w = self._mu_w + self._sigma_w * epsilon_w
+        b = self._mu_b + self._sigma_b * epsilon_b
         output = tf.matmul(inputs, w) + b
         if self.activation is not None:
             output = self.activation(output)
