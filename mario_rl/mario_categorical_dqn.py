@@ -222,12 +222,15 @@ class Mario:
             lower_ratios = upper_indices - target_indices  # [batch_size,]
             upper_ratios = 1 - lower_ratios  # [batch_size,]
             next_q_prob = next_q_probs[:, j]  # [batch_size,]
-            # Add the probability to the target distribution
-            # NOTE: Because reduce_sum(nexq_q_probs, axis=1) == 1.0
-            #       target_dist[:, lower_indices] + target_dist[:, upper_indices] == next_q_prob
-            #       So, reduce_sum(target_dist, axis=1) == 1.0
-            target_probs[:, lower_indices] += lower_ratios * next_q_prob
-            target_probs[:, upper_indices] += upper_ratios * next_q_prob
+            # Add the probability to the target distribution, scattering each
+            # batch element's mass into its own row (np.add.at also handles the
+            # case where lower_indices == upper_indices for a given element).
+            # NOTE: Because reduce_sum(next_q_probs, axis=1) == 1.0
+            #       target_probs[b, lower] + target_probs[b, upper] == next_q_prob[b]
+            #       So, reduce_sum(target_probs, axis=1) == 1.0
+            batch_indices = np.arange(batch_size)
+            np.add.at(target_probs, (batch_indices, lower_indices), lower_ratios * next_q_prob)
+            np.add.at(target_probs, (batch_indices, upper_indices), upper_ratios * next_q_prob)
         return target_probs
 
     def _calc_target_probs_for_actions(self, q_probs: tf.Tensor, action_indices: tf.Tensor,
