@@ -198,7 +198,7 @@ class Main:
                         episode_logger = self._run_episode(episode=episode, train=False)
                         episode_logger.print()
                         episode_logger.save_experiences()
-                        test_log.write(f"{episode},{train_step},{total_reward:.0f}\n")
+                        test_log.write(f"{episode},{train_step},{episode_logger.total_reward:.0f}\n")
         finally:
             self._env.close()
 
