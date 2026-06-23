@@ -34,7 +34,7 @@ class Mario:
         self._action_dim = action_dim
         # Q-values are represented as a value distribution over a discrete range of values
         # support_points defines the discrete range of values
-        self._support_points = np.linspace(self._V_MIN, self._V_MAX, self._NUM_ATOMS)
+        self._support_points = np.linspace(self._V_MIN, self._V_MAX, self._NUM_ATOMS).astype(np.float32)
         self._delta_support = (self._V_MAX - self._V_MIN) / (self._NUM_ATOMS - 1)
 
         # online network
@@ -146,21 +146,34 @@ class Mario:
         experiences = self.memory.sample(self._BATCH_SIZE)
         states_img = np.array([exp.state[0] for exp in experiences])  # [batch_size, steps, width, height]
         states_last_action = np.array([exp.state[1] for exp in experiences])  # [batch_size, steps, action_dim]
-        states = [states_img, states_last_action]
         next_states_img = np.array([exp.next_state[0] for exp in experiences])  # [batch_size, steps, width, height]
         next_states_last_action = np.array(
             [exp.next_state[1] for exp in experiences])  # [batch_size, steps, action_dim]
-        next_states = [next_states_img, next_states_last_action]
         actions = np.array([exp.action for exp in experiences])  # [batch_size,]
         rewards = np.array([exp.reward for exp in experiences])  # [batch_size,]
         dones = np.array([exp.done for exp in experiences])  # [batch_size,]
-        # best_next_actions: [batch_size,]
-        # next_q_online_values: [batch_size, action_dim]
-        # next_q_probs: [batch_size, action_dim, num_atoms]
-        best_next_actions, _, _ = self._greedy_actions(next_states, self._q_online)
-        _, next_q_online_values, next_q_probs = self._greedy_actions(next_states, self._q_target)
-        target_probs = self._calc_target_probs_for_actions(q_probs=next_q_probs, action_indices=best_next_actions,
-                                                           rewards=rewards, dones=dones)  # [batch_size, num_atoms]
+        # target-net distribution at the online-net's greedy next action (Double DQN style)
+        next_q_probs = self._next_action_probs([next_states_img, next_states_last_action])  # [batch_size, num_atoms]
+        target_probs = self._calc_target_probs(rewards=rewards, dones=dones,
+                                               next_q_probs=next_q_probs.numpy())  # [batch_size, num_atoms]
+        return self._train_step([states_img, states_last_action], target_probs.astype(np.float32), actions)
+
+    @tf.function
+    def _next_action_probs(self, next_states):
+        """Target-net value distribution at the online-net's greedy next action.
+
+        Compiled with tf.function. Returns shape [batch_size, num_atoms].
+        """
+        online_probs = self._q_online(next_states)  # [batch_size, action_dim, num_atoms]
+        online_means = tf.reduce_sum(online_probs * self._support_points, axis=-1)  # [batch_size, action_dim]
+        best_next_actions = tf.argmax(online_means, axis=-1)  # [batch_size]
+        target_probs_all = self._q_target(next_states)  # [batch_size, action_dim, num_atoms]
+        action_mask = tf.one_hot(best_next_actions, self._action_dim)[..., tf.newaxis]  # [batch_size, action_dim, 1]
+        return tf.reduce_sum(target_probs_all * action_mask, axis=1)  # [batch_size, num_atoms]
+
+    @tf.function
+    def _train_step(self, states, target_probs, actions):
+        """One Categorical DQN (C51) gradient update, compiled with tf.function for speed."""
         with tf.GradientTape() as tape:
             q_probs = self._q_online(states)  # [batch_size, action_dim, num_atoms]
             masks = self._make_masks(action_indices=actions)  # [batch_size, action_dim, num_atoms]
